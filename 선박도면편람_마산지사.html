@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>선박 도면 편람 | 해양환경공단 마산지사</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --navy:      #0a1628; --navy2: #0f2040; --navy3: #162a52;
+      --surface:   #1a2f5a; --surface2: #1e3566;
+      --border:    #2a4a8a; --border2: #3a5ea0;
+      --accent:    #4a9eff; --accent2: #2979e0;
+      --teal:      #00c9b1; --teal2: #009e8c;
+      --text:      #e8f0ff; --text-muted: #7a9acc;
+      --user-bg:   #2979e0; --ai-bg: #162a52;
+      --radius:    12px;
+      --font:      'Noto Sans KR', sans-serif;
+      --mono:      'DM Mono', monospace;
+    }
+    body { font-family: var(--font); background: var(--navy); color: var(--text); height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+    body::before { content:''; position:fixed; inset:0; background: radial-gradient(ellipse 60% 40% at 20% 10%, rgba(42,110,180,0.12) 0%, transparent 60%), radial-gradient(ellipse 40% 30% at 80% 90%, rgba(0,180,160,0.08) 0%, transparent 50%); pointer-events:none; z-index:0; }
+
+    /* ── 로그인 ── */
+    #login-screen { position:fixed; inset:0; z-index:100; background:var(--navy); display:flex; align-items:center; justify-content:center; }
+    .login-card { background:var(--navy2); border:1px solid var(--border); border-radius:20px; padding:48px 44px; width:min(420px,90vw); text-align:center; box-shadow:0 32px 80px rgba(0,0,0,.5); }
+    .login-logo  { font-size:2.8rem; margin-bottom:12px; }
+    .login-org   { font-size:0.78rem; color:var(--teal); font-family:var(--mono); letter-spacing:.08em; margin-bottom:6px; }
+    .login-title { font-size:1.25rem; font-weight:700; margin-bottom:32px; }
+    .login-field { width:100%; margin-bottom:14px; background:var(--navy3); border:1px solid var(--border); border-radius:10px; padding:13px 16px; font-family:var(--font); font-size:.9rem; color:var(--text); outline:none; transition:border-color .15s; }
+    .login-field:focus { border-color:var(--accent); }
+    .login-field::placeholder { color:var(--text-muted); }
+    .login-btn { width:100%; background:var(--accent2); color:white; border:none; border-radius:10px; padding:13px; font-family:var(--font); font-size:.95rem; font-weight:500; cursor:pointer; transition:background .15s; }
+    .login-btn:hover { background:var(--accent); }
+    .login-error { margin-top:12px; font-size:.82rem; color:#ff7070; display:none; }
+    .login-notice { margin-top:20px; font-size:.74rem; color:var(--text-muted); line-height:1.6; }
+
+    /* ── 앱 ── */
+    #app { display:none; flex-direction:column; height:100dvh; position:relative; z-index:1; }
+
+    /* 헤더 */
+    .top-bar { display:flex; align-items:center; gap:14px; padding:0 24px; height:58px; background:rgba(10,22,40,.95); border-bottom:1px solid var(--border); backdrop-filter:blur(8px); flex-shrink:0; }
+    .top-logo { font-size:1.4rem; }
+    .top-titles { flex:1; }
+    .top-main { font-size:.95rem; font-weight:700; }
+    .top-sub  { font-size:.72rem; color:var(--text-muted); font-family:var(--mono); }
+    .top-badge { font-family:var(--mono); font-size:.7rem; color:var(--teal); background:rgba(0,201,177,.1); border:1px solid rgba(0,201,177,.25); padding:3px 10px; border-radius:20px; }
+    .logout-btn { background:none; border:1px solid var(--border); color:var(--text-muted); border-radius:8px; padding:5px 12px; font-size:.75rem; font-family:var(--font); cursor:pointer; transition:all .15s; }
+    .logout-btn:hover { border-color:var(--border2); color:var(--text); }
+
+    /* 탭 바 */
+    .tab-bar { display:flex; gap:2px; padding:0 24px; background:var(--navy2); border-bottom:1px solid var(--border); flex-shrink:0; overflow-x:auto; }
+    .tab-bar::-webkit-scrollbar { height:0; }
+    .tab-btn { padding:10px 18px; font-family:var(--font); font-size:.83rem; color:var(--text-muted); background:none; border:none; border-bottom:2px solid transparent; cursor:pointer; white-space:nowrap; transition:color .15s, border-color .15s; }
+    .tab-btn:hover { color:var(--text); }
+    .tab-btn.active { color:var(--accent); border-bottom-color:var(--accent); font-weight:500; }
+
+    .content-area { flex:1; overflow:hidden; display:flex; }
+
+    /* ── 도면 목록 ── */
+    #tab-list { flex:1; overflow-y:auto; padding:24px; display:none; }
+    #tab-list.active { display:block; }
+    #tab-list::-webkit-scrollbar { width:4px; }
+    #tab-list::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+    .section-title { font-size:.75rem; font-weight:500; color:var(--text-muted); letter-spacing:.1em; margin-bottom:14px; padding-bottom:8px; border-bottom:1px solid var(--border); }
+    .drawing-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:14px; margin-bottom:32px; }
+    .drawing-card { background:var(--navy2); border:1px solid var(--border); border-radius:var(--radius); padding:18px; cursor:pointer; transition:border-color .15s, transform .15s; }
+    .drawing-card:hover { border-color:var(--accent2); transform:translateY(-2px); }
+    .dc-header { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+    .dc-icon { font-size:1.5rem; }
+    .dc-num { font-family:var(--mono); font-size:.72rem; color:var(--teal); background:rgba(0,201,177,.1); border:1px solid rgba(0,201,177,.2); padding:2px 8px; border-radius:4px; }
+    .dc-title { font-size:.88rem; font-weight:500; margin-bottom:4px; }
+    .dc-desc  { font-size:.78rem; color:var(--text-muted); line-height:1.5; }
+    .dc-tags  { display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; }
+    .dc-tag   { font-size:.7rem; background:var(--navy3); border:1px solid var(--border); border-radius:4px; padding:2px 8px; color:var(--text-muted); }
+
+    /* ── 도면 뷰어 ── */
+    #tab-viewer { flex:1; display:none; flex-direction:column; }
+    #tab-viewer.active { display:flex; }
+    .viewer-toolbar { display:flex; align-items:center; gap:10px; padding:10px 20px; background:var(--navy2); border-bottom:1px solid var(--border); flex-shrink:0; }
+    .viewer-select { background:var(--navy3); border:1px solid var(--border); border-radius:8px; color:var(--text); font-family:var(--font); font-size:.82rem; padding:7px 12px; outline:none; cursor:pointer; flex:1; max-width:360px; }
+    .viewer-hint { font-size:.78rem; color:var(--text-muted); }
+    .viewer-frame { flex:1; display:flex; align-items:center; justify-content:center; background:var(--navy); overflow:hidden; }
+    .viewer-placeholder { text-align:center; color:var(--text-muted); }
+    .vp-icon { font-size:3rem; margin-bottom:12px; opacity:.5; }
+    #pdf-embed { width:100%; height:100%; border:none; display:none; }
+
+    /* ── 챗봇 ── */
+    #tab-chat { flex:1; display:none; flex-direction:column; }
+    #tab-chat.active { display:flex; }
+    #api-banner { margin:12px 20px 0; background:rgba(74,158,255,.08); border:1px solid rgba(74,158,255,.25); border-radius:10px; padding:12px 16px; font-size:.82rem; color:#79c0ff; flex-shrink:0; }
+    #api-banner.hidden { display:none; }
+    #api-banner a { color:var(--accent); }
+    .key-row { display:flex; gap:8px; margin-top:10px; }
+    .key-row input { flex:1; background:var(--navy3); border:1px solid var(--border); border-radius:8px; padding:8px 12px; font-family:var(--mono); font-size:.82rem; color:var(--text); outline:none; }
+    .key-row input:focus { border-color:var(--accent); }
+    .key-row button { background:var(--accent2); color:white; border:none; border-radius:8px; padding:8px 16px; font-size:.82rem; font-family:var(--font); cursor:pointer; }
+    .key-row button:hover { background:var(--accent); }
+    #messages { flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:14px; scroll-behavior:smooth; }
+    #messages::-webkit-scrollbar { width:4px; }
+    #messages::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+    .msg-wrap { display:flex; gap:10px; animation:fadeUp .22s ease-out; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+    .msg-wrap.user { flex-direction:row-reverse; }
+    .avatar { width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; margin-top:2px; }
+    .avatar.ai   { background:var(--surface); border:1px solid var(--border); }
+    .avatar.user { background:var(--accent2); }
+    .bubble { max-width:78%; padding:11px 16px; border-radius:var(--radius); font-size:.88rem; line-height:1.75; white-space:pre-wrap; word-break:break-word; }
+    .ai   .bubble { background:var(--ai-bg); border:1px solid var(--border); border-top-left-radius:4px; }
+    .user .bubble { background:var(--user-bg); border-top-right-radius:4px; color:#fff; }
+    .typing-dots { display:flex; gap:5px; padding:4px 2px; }
+    .typing-dots span { width:7px; height:7px; border-radius:50%; background:var(--text-muted); animation:dotBounce 1.3s infinite; }
+    .typing-dots span:nth-child(2){animation-delay:.18s} .typing-dots span:nth-child(3){animation-delay:.36s}
+    @keyframes dotBounce { 0%,80%,100%{transform:translateY(0);opacity:.5} 40%{transform:translateY(-7px);opacity:1} }
+    .suggestions { display:flex; flex-wrap:wrap; gap:8px; padding:0 20px 8px; }
+    .sug-btn { background:var(--surface); border:1px solid var(--border); border-radius:20px; padding:6px 14px; font-size:.77rem; color:var(--text-muted); cursor:pointer; font-family:var(--font); transition:border-color .15s, color .15s; }
+    .sug-btn:hover { border-color:var(--accent2); color:var(--text); }
+    .input-bar { display:flex; align-items:flex-end; gap:10px; padding:14px 18px; border-top:1px solid var(--border); background:var(--navy2); flex-shrink:0; }
+    #user-input { flex:1; background:var(--navy3); border:1px solid var(--border); border-radius:var(--radius); padding:11px 16px; font-family:var(--font); font-size:.88rem; color:var(--text); outline:none; resize:none; max-height:120px; line-height:1.55; transition:border-color .15s; }
+    #user-input::placeholder { color:var(--text-muted); }
+    #user-input:focus { border-color:var(--accent2); }
+    #send-btn { width:42px; height:42px; border-radius:var(--radius); background:var(--accent2); border:none; color:white; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:background .15s, transform .1s; }
+    #send-btn:hover:not(:disabled)  { background:var(--accent); }
+    #send-btn:active:not(:disabled) { transform:scale(.94); }
+    #send-btn:disabled { opacity:.35; cursor:not-allowed; }
+    .footer-hint { text-align:center; font-size:.7rem; color:var(--text-muted); padding:0 16px 10px; flex-shrink:0; }
+
+    @media(max-width:540px) {
+      .top-bar,.tab-bar { padding:0 14px; }
+      .tab-btn { padding:10px 10px; font-size:.76rem; }
+      #tab-list { padding:14px; }
+      .drawing-grid { grid-template-columns:1fr; }
+      .bubble { max-width:88%; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- 로그인 -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">⚓</div>
+    <div class="login-org">KOREA MARINE ENVIRONMENT MANAGEMENT CORP.</div>
+    <div class="login-title">해양환경공단 마산지사<br>선박 도면 편람</div>
+    <input class="login-field" type="text"     id="login-id" placeholder="아이디">
+    <input class="login-field" type="password" id="login-pw" placeholder="비밀번호"
+      onkeydown="if(event.key==='Enter') doLogin()">
+    <button class="login-btn" onclick="doLogin()">로그인</button>
+    <div class="login-error" id="login-error">아이디 또는 비밀번호가 올바르지 않습니다.</div>
+    <div class="login-notice">본 시스템은 해양환경공단 마산지사 내부 직원 전용입니다.<br>무단 접근 시 관련 법령에 따라 처벌받을 수 있습니다.</div>
+  </div>
+</div>
+
+<!-- 메인 앱 -->
+<div id="app">
+  <div class="top-bar">
+    <div class="top-logo">⚓</div>
+    <div class="top-titles">
+      <div class="top-main">선박 도면 편람</div>
+      <div class="top-sub">해양환경공단 마산지사 · KOEM Masan Branch</div>
+    </div>
+    <div class="top-badge">내부 전용</div>
+    <button class="logout-btn" onclick="doLogout()">로그아웃</button>
+  </div>
+
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('list',this)">📋 도면 목록</button>
+    <button class="tab-btn"        onclick="switchTab('viewer',this)">🗂 도면 뷰어</button>
+    <button class="tab-btn"        onclick="switchTab('chat',this)">🤖 AI 도면 챗봇</button>
+  </div>
+
+  <div class="content-area">
+
+    <!-- 도면 목록 -->
+    <div id="tab-list" class="active">
+
+      <div class="section-title">📐 일반배치도 (General Arrangement)</div>
+      <div class="drawing-grid">
+        <div class="drawing-card" onclick="openViewer('B-102')">
+          <div class="dc-header"><div class="dc-icon">🚢</div><span class="dc-num">B-102</span></div>
+          <div class="dc-title">일반배치도 R0</div>
+          <div class="dc-desc">선박 전체 구획 배치 및 주요 설비 위치. 갑판별 평면도 포함.</div>
+          <div class="dc-tags"><span class="dc-tag">General Arrangement</span><span class="dc-tag">R0</span></div>
+        </div>
+        <div class="drawing-card" onclick="openViewer('B-103')">
+          <div class="dc-header"><div class="dc-icon">🚢</div><span class="dc-num">B-103</span></div>
+          <div class="dc-title">일반배치도 R1 (개정)</div>
+          <div class="dc-desc">R0 대비 개정 사항 반영. 구명설비 위치 업데이트.</div>
+          <div class="dc-tags"><span class="dc-tag">General Arrangement</span><span class="dc-tag">R1</span></div>
+        </div>
+      </div>
+
+      <div class="section-title">⚙️ 기관실 도면</div>
+      <div class="drawing-grid">
+        <div class="drawing-card" onclick="openViewer('E-201')">
+          <div class="dc-header"><div class="dc-icon">⚙️</div><span class="dc-num">E-201</span></div>
+          <div class="dc-title">기관실 일반배치도</div>
+          <div class="dc-desc">주기관, 발전기, 보조기기 배치 및 파이프 계통.</div>
+          <div class="dc-tags"><span class="dc-tag">Engine Room</span><span class="dc-tag">배치도</span></div>
+        </div>
+        <div class="drawing-card" onclick="openViewer('E-202')">
+          <div class="dc-header"><div class="dc-icon">🔧</div><span class="dc-num">E-202</span></div>
+          <div class="dc-title">연료유 계통도</div>
+          <div class="dc-desc">연료유 이송·청정·공급 계통 상세 도면.</div>
+          <div class="dc-tags"><span class="dc-tag">Fuel Oil</span><span class="dc-tag">계통도</span></div>
+        </div>
+      </div>
+
+      <div class="section-title">⚡ 전기 계통도</div>
+      <div class="drawing-grid">
+        <div class="drawing-card" onclick="openViewer('EL-301')">
+          <div class="dc-header"><div class="dc-icon">⚡</div><span class="dc-num">EL-301</span></div>
+          <div class="dc-title">주배전반 단선도</div>
+          <div class="dc-desc">발전기 및 주요 전기부하 단선 계통도.</div>
+          <div class="dc-tags"><span class="dc-tag">Single Line</span><span class="dc-tag">배전반</span></div>
+        </div>
+        <div class="drawing-card" onclick="openViewer('EL-302')">
+          <div class="dc-header"><div class="dc-icon">💡</div><span class="dc-num">EL-302</span></div>
+          <div class="dc-title">조명·항해 계통도</div>
+          <div class="dc-desc">항해등, 선내 조명, 비상전원 회로.</div>
+          <div class="dc-tags"><span class="dc-tag">Lighting</span><span class="dc-tag">Navigation</span></div>
+        </div>
+      </div>
+
+      <div class="section-title">🆘 안전설비 배치도</div>
+      <div class="drawing-grid">
+        <div class="drawing-card" onclick="openViewer('SF-401')">
+          <div class="dc-header"><div class="dc-icon">🆘</div><span class="dc-num">SF-401</span></div>
+          <div class="dc-title">구명설비 배치도</div>
+          <div class="dc-desc">구명정, 구명뗏목, 구명환 위치 및 집합장소.</div>
+          <div class="dc-tags"><span class="dc-tag">Life Saving</span><span class="dc-tag">SOLAS</span></div>
+        </div>
+        <div class="drawing-card" onclick="openViewer('SF-402')">
+          <div class="dc-header"><div class="dc-icon">🔥</div><span class="dc-num">SF-402</span></div>
+          <div class="dc-title">소화설비 배치도</div>
+          <div class="dc-desc">소화기, 고정식 소화장치, 화재탐지기 위치.</div>
+          <div class="dc-tags"><span class="dc-tag">Fire Fighting</span><span class="dc-tag">탐지기</span></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 도면 뷰어 -->
+    <div id="tab-viewer">
+      <div class="viewer-toolbar">
+        <select class="viewer-select" id="drawing-select" onchange="loadDrawing(this.value)">
+          <option value="">-- 도면을 선택하세요 --</option>
+          <option value="B-102">B-102 | 일반배치도 R0</option>
+          <option value="B-103">B-103 | 일반배치도 R1</option>
+          <option value="E-201">E-201 | 기관실 일반배치도</option>
+          <option value="E-202">E-202 | 연료유 계통도</option>
+          <option value="EL-301">EL-301 | 주배전반 단선도</option>
+          <option value="EL-302">EL-302 | 조명·항해 계통도</option>
+          <option value="SF-401">SF-401 | 구명설비 배치도</option>
+          <option value="SF-402">SF-402 | 소화설비 배치도</option>
+        </select>
+        <span class="viewer-hint">💡 도면 목록에서 클릭하거나 여기서 선택하세요</span>
+      </div>
+      <div class="viewer-frame">
+        <div class="viewer-placeholder" id="viewer-placeholder">
+          <div class="vp-icon">🗂</div>
+          <p>도면을 선택하면 여기에 표시됩니다</p>
+        </div>
+        <iframe id="pdf-embed" title="도면 뷰어"></iframe>
+      </div>
+    </div>
+
+    <!-- AI 챗봇 -->
+    <div id="tab-chat">
+      <div id="api-banner">
+        <strong>🔑 Groq API 키 설정</strong> —
+        <a href="https://console.groq.com" target="_blank">console.groq.com</a>에서 무료 발급 후 입력하세요 (가입만 하면 즉시 사용 가능)
+        <div class="key-row">
+          <input type="password" id="api-key-input" placeholder="gsk_로 시작하는 API 키 붙여넣기">
+          <button onclick="saveKey()">저장</button>
+        </div>
+      </div>
+
+      <div id="messages">
+        <div class="msg-wrap ai">
+          <div class="avatar ai">⚓</div>
+          <div class="bubble">안녕하세요! 해양환경공단 마산지사 선박 도면 전문 AI입니다.
+
+도면 번호, 설비 위치, 계통 구성, SOLAS·MARPOL 기준 등 궁금한 사항을 질문해 주세요 😊</div>
+        </div>
+      </div>
+
+      <div class="suggestions" id="suggestions">
+        <button class="sug-btn" onclick="useSug('B-102 일반배치도에서 조타실 위치는 어디인가요?')">📍 조타실 위치</button>
+        <button class="sug-btn" onclick="useSug('구명설비 집합장소는 어느 갑판에 있나요?')">🆘 집합장소</button>
+        <button class="sug-btn" onclick="useSug('기관실 주기관 사양을 알려주세요')">⚙️ 주기관 사양</button>
+        <button class="sug-btn" onclick="useSug('소화기 배치 SOLAS 기준을 설명해주세요')">🔥 소화기 기준</button>
+      </div>
+
+      <div class="input-bar">
+        <textarea id="user-input" rows="1"
+          placeholder="도면 관련 질문을 입력하세요... (Enter 전송 / Shift+Enter 줄바꿈)"
+          onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+        <button id="send-btn" onclick="sendMessage()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+          </svg>
+        </button>
+      </div>
+      <div class="footer-hint">Powered by Groq · Llama 3 · 선박 도면 전문 AI</div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── 설정 ─────────────────────────────────────────────────
+// 로그인 계정 (운영 시 변경하세요)
+const ACCOUNTS = { 'masan01': 'koem2024!', 'admin': 'masan@1234' };
+
+// 도면 PDF 경로 (레포의 drawings/ 폴더에 파일 업로드 후 파일명 맞추세요)
+const DRAWINGS = {
+  'B-102':  'drawings/B-102_GA_R0.pdf',
+  'B-103':  'drawings/B-103_GA_R1.pdf',
+  'E-201':  'drawings/E-201_EngineRoom.pdf',
+  'E-202':  'drawings/E-202_FuelOil.pdf',
+  'EL-301': 'drawings/EL-301_SingleLine.pdf',
+  'EL-302': 'drawings/EL-302_Lighting.pdf',
+  'SF-401': 'drawings/SF-401_LifeSaving.pdf',
+  'SF-402': 'drawings/SF-402_FireFighting.pdf',
+};
+
+// AI 시스템 프롬프트 — 도면 상세 정보를 여기에 추가하세요
+const SYSTEM_PROMPT = `당신은 해양환경공단 마산지사의 선박 도면 전문 AI 어시스턴트입니다.
+내부 직원들의 도면 관련 질문에 정확하고 전문적으로 답변하세요.
+
+[보유 도면]
+- B-102: 일반배치도 R0 — 전체 구획, 갑판별 평면도, 주요 설비 위치
+- B-103: 일반배치도 R1 — R0 개정판, 구명설비 위치 업데이트
+- E-201: 기관실 일반배치도 — 주기관, 발전기, 보조기기 배치
+- E-202: 연료유 계통도 — 이송·청정·공급 계통
+- EL-301: 주배전반 단선도 — 발전기 및 전기부하 계통
+- EL-302: 조명·항해 계통도 — 항해등, 선내조명, 비상전원
+- SF-401: 구명설비 배치도 — 구명정·뗏목·구명환·집합장소
+- SF-402: 소화설비 배치도 — 소화기·고정식장치·화재탐지기
+
+[답변 원칙]
+1. 도면 번호를 반드시 명시하세요.
+2. KR(한국선급), SOLAS, MARPOL 기준을 정확하게 인용하세요.
+3. 모르는 내용은 "담당 기술팀 또는 해당 도면을 직접 확인하세요"로 안내하세요.
+4. 모든 답변은 한국어로 하세요.`;
+
+const MODEL = 'llama-3.1-8b-instant';
+
+// ── 로그인 ────────────────────────────────────────────────
+function doLogin() {
+  const id = document.getElementById('login-id').value.trim();
+  const pw = document.getElementById('login-pw').value;
+  if (ACCOUNTS[id] && ACCOUNTS[id] === pw) {
+    sessionStorage.setItem('masan_auth', id);
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+  } else {
+    document.getElementById('login-error').style.display = 'block';
+  }
+}
+function doLogout() {
+  sessionStorage.removeItem('masan_auth');
+  sessionStorage.removeItem('groq_key');
+  location.reload();
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  if (sessionStorage.getItem('masan_auth')) {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+  }
+  const k = sessionStorage.getItem('groq_key');
+  if (k) { apiKey = k; document.getElementById('api-banner').classList.add('hidden'); }
+});
+
+// ── 탭 ───────────────────────────────────────────────────
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  ['list','viewer','chat'].forEach(n =>
+    document.getElementById('tab-'+n).classList.toggle('active', n===name));
+}
+
+// ── 뷰어 ──────────────────────────────────────────────────
+function openViewer(code) {
+  switchTab('viewer', document.querySelectorAll('.tab-btn')[1]);
+  document.getElementById('drawing-select').value = code;
+  loadDrawing(code);
+}
+function loadDrawing(code) {
+  const frame = document.getElementById('pdf-embed');
+  const ph    = document.getElementById('viewer-placeholder');
+  if (!code) { frame.style.display='none'; ph.style.display='block'; return; }
+  const path = DRAWINGS[code];
+  if (path) {
+    frame.src = path; frame.style.display='block'; ph.style.display='none';
+  } else {
+    ph.innerHTML = '<div class="vp-icon">📄</div><p><b>drawings/</b> 폴더에 PDF를 업로드하세요</p>';
+    frame.style.display='none'; ph.style.display='block';
+  }
+}
+
+// ── 챗봇 ──────────────────────────────────────────────────
+let apiKey = '', chatHistory = [], isLoading = false;
+
+function saveKey() {
+  const v = document.getElementById('api-key-input').value.trim();
+  if (!v) return;
+  apiKey = v; sessionStorage.setItem('groq_key', v);
+  document.getElementById('api-banner').classList.add('hidden');
+}
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+function handleKey(e) { if (e.key==='Enter'&&!e.shiftKey) { e.preventDefault(); sendMessage(); } }
+function useSug(t) {
+  document.getElementById('user-input').value = t;
+  document.getElementById('suggestions').style.display = 'none';
+  sendMessage();
+}
+function addMsg(role, text) {
+  const wrap = document.createElement('div'); wrap.className = 'msg-wrap '+role;
+  const av   = document.createElement('div'); av.className = 'avatar '+role; av.textContent = role==='ai'?'⚓':'👤';
+  const bub  = document.createElement('div'); bub.className = 'bubble'; bub.textContent = text;
+  wrap.appendChild(av); wrap.appendChild(bub);
+  const el = document.getElementById('messages');
+  el.appendChild(wrap); el.scrollTop = el.scrollHeight;
+}
+function addTyping() {
+  const wrap = document.createElement('div'); wrap.className='msg-wrap ai'; wrap.id='typing';
+  const av   = document.createElement('div'); av.className='avatar ai'; av.textContent='⚓';
+  const bub  = document.createElement('div'); bub.className='bubble';
+  bub.innerHTML='<div class="typing-dots"><span></span><span></span><span></span></div>';
+  wrap.appendChild(av); wrap.appendChild(bub);
+  const el = document.getElementById('messages'); el.appendChild(wrap); el.scrollTop=el.scrollHeight;
+}
+async function sendMessage() {
+  const inputEl = document.getElementById('user-input');
+  const text = inputEl.value.trim();
+  if (!text || isLoading) return;
+  if (!apiKey) { document.getElementById('api-banner').classList.remove('hidden'); return; }
+  document.getElementById('suggestions').style.display = 'none';
+  inputEl.value=''; inputEl.style.height='auto';
+  isLoading=true; document.getElementById('send-btn').disabled=true;
+  addMsg('user', text);
+  chatHistory.push({ role:'user', content:text });
+  addTyping();
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+apiKey },
+      body: JSON.stringify({ model:MODEL, messages:[{role:'system',content:SYSTEM_PROMPT},...chatHistory], max_tokens:1024, temperature:0.5 })
+    });
+    if (!res.ok) { const e=await res.json().catch(()=>({})); throw new Error(e.error?.message||'HTTP '+res.status); }
+    const data = await res.json();
+    const reply = data.choices?.[0]?.message?.content?.trim() || '응답을 받지 못했습니다.';
+    chatHistory.push({ role:'assistant', content:reply });
+    document.getElementById('typing')?.remove();
+    addMsg('ai', reply);
+    if (chatHistory.length>20) chatHistory=chatHistory.slice(-20);
+  } catch(err) {
+    document.getElementById('typing')?.remove();
+    let msg = '⚠️ 오류: '+err.message;
+    if (err.message.includes('401')) msg='⚠️ API 키가 올바르지 않습니다.';
+    if (err.message.includes('429')) msg='⚠️ 잠시 후 다시 시도해주세요.';
+    addMsg('ai', msg);
+  } finally {
+    isLoading=false; document.getElementById('send-btn').disabled=false; inputEl.focus();
+  }
+}
+</script>
+</body>
+</html>
